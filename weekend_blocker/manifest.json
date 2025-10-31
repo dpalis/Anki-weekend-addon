@@ -1,0 +1,12 @@
+{
+    "package": "weekend_blocker",
+    "name": "Weekend Blocker",
+    "author": "David Palis",
+    "version": "1.0.0",
+    "homepage": "",
+    "conflicts": [],
+    "min_point_version": 50,
+    "max_point_version": 0,
+    "supported_platforms": ["mac", "windows", "linux"],
+    "mod": 0
+}
