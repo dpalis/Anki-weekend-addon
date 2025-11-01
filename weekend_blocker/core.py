@@ -8,6 +8,7 @@ from typing import Dict, List
 from aqt import mw
 from aqt.deckconf import DeckConf
 
+from .translations import get_translation as tr
 from .utils import (
     get_addon_config,
     get_day_name,
@@ -188,18 +189,18 @@ def apply_weekend_block() -> None:
     changes = set_new_cards_limit(0)
 
     if changes or buried_count > 0:
-        message = f"🚫 Fim de semana: Novos cards bloqueados\n\n"
-        message += f"Hoje: {get_day_name()}\n\n"
+        message = f"{tr('weekend_blocked_title')}\n\n"
+        message += f"{tr('status_today')}: {get_day_name()}\n\n"
 
         if buried_count > 0:
-            message += f"Cards enterrados: {buried_count}\n"
+            message += f"{tr('weekend_buried')}: {buried_count}\n"
 
         if changes:
-            message += f"Alterações:\n" + "\n".join(changes)
+            message += f"{tr('weekend_changes')}:\n" + "\n".join(changes)
 
         show_tooltip(message, duration=5000)
     else:
-        show_tooltip(f"✓ Novos cards já estão bloqueados ({get_day_name()})")
+        show_tooltip(f"{tr('tooltip_already_blocked')} ({get_day_name()})")
 
 
 def unbury_new_cards() -> int:
@@ -237,7 +238,7 @@ def restore_weekday_limits() -> None:
     original_limits = config.get("original_limits", {})
 
     if not original_limits:
-        show_tooltip("⚠️ Nenhum backup de configurações encontrado")
+        show_tooltip(tr("tooltip_no_backup"))
         return
 
     if not mw or not mw.col:
@@ -292,18 +293,18 @@ def restore_weekday_limits() -> None:
             {"changes": changes, "unburied": unburied_count}
         )
 
-        message = f"✓ Dia de semana: Novos cards liberados\n\n"
-        message += f"Hoje: {get_day_name()}\n\n"
+        message = f"{tr('weekday_restored_title')}\n\n"
+        message += f"{tr('status_today')}: {get_day_name()}\n\n"
 
         if unburied_count > 0:
-            message += f"Cards desenterrados: {unburied_count}\n"
+            message += f"{tr('weekday_unburied')}: {unburied_count}\n"
 
         if changes:
-            message += f"Restaurado:\n" + "\n".join(changes)
+            message += f"{tr('weekday_restored')}:\n" + "\n".join(changes)
 
         show_tooltip(message, duration=5000)
     else:
-        show_tooltip(f"✓ Configurações já estão corretas ({get_day_name()})")
+        show_tooltip(f"{tr('tooltip_already_correct')} ({get_day_name()})")
 
 
 def pause_all_new_cards() -> None:
@@ -351,7 +352,7 @@ def run_automatic_check(show_feedback: bool = False) -> None:
     # Check if addon is enabled
     if not config.get("enabled", True):
         if show_feedback:
-            show_tooltip("⚠️ Addon está desativado")
+            show_tooltip(tr("tooltip_addon_disabled"))
         return
 
     # Save original limits on first run
@@ -360,7 +361,7 @@ def run_automatic_check(show_feedback: bool = False) -> None:
     # If manual pause is active, keep new cards at 0
     if config.get("manual_pause", False):
         if show_feedback:
-            show_tooltip("⏸️ Modo pausa manual está ativo - novos cards bloqueados")
+            show_tooltip(tr("tooltip_manual_pause_active"))
         set_new_cards_limit(0)
         return
 
@@ -392,13 +393,13 @@ def get_status_info() -> str:
     config = get_addon_config()
     deck_configs = get_all_deck_configs()
 
-    status = f"📊 Weekend Blocker - Status\n\n"
-    status += f"Hoje: {get_day_name()}\n"
-    status += f"Fim de semana: {'✅' if is_weekend() else '❌'}\n"
-    status += f"Addon ativo: {'✅' if config.get('enabled', True) else '❌'}\n"
-    status += f"Pausa manual: {'✅' if config.get('manual_pause', False) else '❌'}\n\n"
+    status = f"{tr('status_title')}\n\n"
+    status += f"{tr('status_today')}: {get_day_name()}\n"
+    status += f"{tr('status_weekend')}: {'✅' if is_weekend() else '❌'}\n"
+    status += f"{tr('status_enabled')}: {'✅' if config.get('enabled', True) else '❌'}\n"
+    status += f"{tr('status_manual_pause')}: {'✅' if config.get('manual_pause', False) else '❌'}\n\n"
 
-    status += "Configurações de decks:\n"
+    status += f"{tr('status_deck_configs')}:\n"
     for config_id, deck_config in deck_configs.items():
         name = deck_config["name"]
         current = deck_config["new_per_day"]
@@ -406,7 +407,7 @@ def get_status_info() -> str:
 
         # Format the deck info more clearly
         status += f"  • {name}\n"
-        status += f"      Atual: {current} novos cards/dia\n"
-        status += f"      Backup: {original} novos cards/dia\n"
+        status += f"      {tr('status_current')}: {current} {tr('status_cards_per_day')}\n"
+        status += f"      {tr('status_backup')}: {original} {tr('status_cards_per_day')}\n"
 
     return status

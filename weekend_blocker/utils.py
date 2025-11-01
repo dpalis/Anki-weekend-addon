@@ -11,6 +11,30 @@ from typing import Optional
 from aqt import mw
 
 
+def get_anki_language() -> str:
+    """
+    Get the current Anki interface language.
+
+    Returns:
+        str: Language code (e.g., 'en', 'pt', 'es')
+    """
+    if not mw or not mw.pm:
+        return "en"  # Default to English
+
+    # Get language from Anki preferences
+    lang = mw.pm.meta.get("defaultLang", "en")
+
+    # Normalize language code (e.g., 'pt_BR' -> 'pt')
+    if "_" in lang:
+        lang = lang.split("_")[0]
+
+    # Map to supported languages (currently 'pt' and 'en')
+    if lang.startswith("pt"):
+        return "pt"
+    else:
+        return "en"  # Default to English for all other languages
+
+
 def is_weekend() -> bool:
     """
     Check if today is Saturday (5) or Sunday (6).
@@ -24,21 +48,25 @@ def is_weekend() -> bool:
 
 def get_day_name() -> str:
     """
-    Get the current day name in Portuguese.
+    Get the current day name in the user's language.
 
     Returns:
-        str: Day name (e.g., "Sábado", "Segunda-feira")
+        str: Localized day name
     """
-    days = {
-        0: "Segunda-feira",
-        1: "Terça-feira",
-        2: "Quarta-feira",
-        3: "Quinta-feira",
-        4: "Sexta-feira",
-        5: "Sábado",
-        6: "Domingo"
+    from .translations import get_translation
+
+    day_keys = {
+        0: "day_monday",
+        1: "day_tuesday",
+        2: "day_wednesday",
+        3: "day_thursday",
+        4: "day_friday",
+        5: "day_saturday",
+        6: "day_sunday"
     }
-    return days[datetime.datetime.now().weekday()]
+
+    weekday = datetime.datetime.now().weekday()
+    return get_translation(day_keys[weekday])
 
 
 def log_action(action: str, details: Optional[dict] = None) -> None:

@@ -204,6 +204,36 @@ Your original settings are backed up on first run and can be restored at any tim
 - Action logging
 - Automatic configuration backup
 
+## 🌍 Translations
+
+Weekend Blocker supports multiple languages and automatically adapts to your Anki interface language.
+
+### Currently Supported Languages
+
+- 🇧🇷 **Portuguese** (Português)
+- 🇺🇸 **English**
+
+The addon automatically detects your Anki language setting and displays all menus, messages, and dialogs in the appropriate language.
+
+### Want to Add Your Language?
+
+We welcome translations! If you'd like to see Weekend Blocker in your language:
+
+1. **Open an Issue**: [Create a translation request](https://github.com/dpalis/Anki-weekend-addon/issues/new) with the label `translation`
+2. **Provide translations**: We'll guide you through the process
+3. **Quick contribution**: All translations are in a single file (`translations.py`) - about 50 strings to translate
+
+**Languages we'd love to add:**
+- Spanish (Español)
+- French (Français)
+- German (Deutsch)
+- Italian (Italiano)
+- Japanese (日本語)
+- Chinese (中文)
+- And many more!
+
+Don't see your language? Just ask! Creating a translation takes about 15-20 minutes.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

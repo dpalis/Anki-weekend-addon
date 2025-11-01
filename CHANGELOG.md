@@ -14,6 +14,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistics dashboard (cards blocked over time)
 - Automatic sync trigger detection
 
+## [1.1.0] - 2025-11-01
+
+### Added
+- ✨ **Multilingual support**: Addon now supports Portuguese and English
+- 🌍 Automatic language detection from Anki interface settings
+- 📝 All menus, dialogs, and messages are now translated
+- 🔧 Easy to add new languages (all strings in single file)
+
+### Changed
+- Created `translations.py` module with PT and EN translations
+- Added `get_anki_language()` function to detect user's language
+- Updated all UI strings to use translation system
+- Updated all core.py messages to use translation system
+- Updated day names to be localized
+- README now includes Translations section inviting contributions
+
+### Technical Details
+- New file: `translations.py` (~250 lines)
+- Modified: `ui.py`, `core.py`, `utils.py` to use `tr()` function
+- Supports easy addition of new languages via GitHub Issues
+- Fallback to English for unsupported languages
+
 ## [1.0.1] - 2025-11-01
 
 ### Fixed
