@@ -1,9 +1,9 @@
 {
     "package": "weekend_blocker",
     "name": "Weekend Blocker",
-    "author": "David Palis",
-    "version": "1.0.0",
-    "homepage": "",
+    "author": "Daniel Palis",
+    "version": "1.0.1",
+    "homepage": "https://github.com/dpalis/Anki-weekend-addon",
     "conflicts": [],
     "min_point_version": 50,
     "max_point_version": 0,

@@ -14,6 +14,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistics dashboard (cards blocked over time)
 - Automatic sync trigger detection
 
+## [1.0.1] - 2025-11-01
+
+### Fixed
+- **Critical**: Fixed issue where only some decks were being blocked on weekends
+  - Now correctly modifies both deck configurations AND individual deck settings
+  - Buries new cards already in today's queue (fixes cards appearing even after blocking)
+  - Unburied cards automatically restored on weekdays
+- Improved deck detection to handle all deck configuration scenarios
+- Enhanced backup system to save both config-level and deck-level limits
+
+### Changed
+- `save_original_limits()`: Now saves both deck configs and individual deck overrides
+- `set_new_cards_limit()`: Now modifies both deck configs and individual decks
+- `restore_weekday_limits()`: Now restores both types of limits and unburied cards
+- Added `bury_new_cards_in_queue()`: Buries new cards already scheduled for today
+- Added `unbury_new_cards()`: Unburied cards on weekdays
+
+### Technical Details
+- Cards are now buried using `mw.col.sched.bury_cards()` to hide them from today's queue
+- This ensures cards already loaded into the queue are hidden immediately
+- Cards automatically unbury on weekdays when limits are restored
+
 ## [1.0.0] - 2025-10-31
 
 ### Added

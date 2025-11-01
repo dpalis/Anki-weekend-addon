@@ -46,7 +46,7 @@ def get_all_deck_configs() -> Dict[int, dict]:
 
 def save_original_limits() -> None:
     """
-    Save the original 'new cards per day' limits for all deck configs.
+    Save the original 'new cards per day' limits for all deck configs and individual decks.
     This is done only once, on first run, to preserve user settings.
     """
     config = get_addon_config()
@@ -55,11 +55,23 @@ def save_original_limits() -> None:
     if config.get("original_limits"):
         return
 
-    deck_configs = get_all_deck_configs()
     original_limits = {}
 
+    # Save deck config limits
+    deck_configs = get_all_deck_configs()
     for config_id, deck_config in deck_configs.items():
-        original_limits[str(config_id)] = deck_config["new_per_day"]
+        original_limits[f"config_{config_id}"] = deck_config["new_per_day"]
+
+    # Save individual deck limits (if they have overrides)
+    if mw and mw.col:
+        all_decks = mw.col.decks.all()
+        for deck in all_decks:
+            deck_id = deck.get("id")
+            deck_name = deck.get("name", "Unknown")
+
+            # Save deck-specific limit if it exists
+            if "new" in deck and "perDay" in deck["new"]:
+                original_limits[f"deck_{deck_id}"] = deck["new"]["perDay"]
 
     config["original_limits"] = original_limits
     save_addon_config(config)
@@ -72,7 +84,7 @@ def save_original_limits() -> None:
 
 def set_new_cards_limit(limit: int, dry_run: bool = False) -> List[str]:
     """
-    Set the new cards per day limit for all deck configurations.
+    Set the new cards per day limit for all deck configurations AND individual decks.
 
     Args:
         limit: The new limit to set (0 to block new cards)
@@ -85,6 +97,8 @@ def set_new_cards_limit(limit: int, dry_run: bool = False) -> List[str]:
         return ["Error: Anki collection not available"]
 
     changes = []
+
+    # Method 1: Update all deck configurations (affects decks using these configs)
     all_config = mw.col.decks.all_config()
 
     for config in all_config:
@@ -99,8 +113,31 @@ def set_new_cards_limit(limit: int, dry_run: bool = False) -> List[str]:
                 mw.col.decks.update_config(config)
 
             changes.append(
-                f"{config_name}: {current_limit} → {limit}"
+                f"Config '{config_name}': {current_limit} → {limit}"
             )
+
+    # Method 2: Update all individual decks (some decks may have per-deck overrides)
+    all_decks = mw.col.decks.all()
+
+    for deck in all_decks:
+        deck_name = deck.get("name", "Unknown")
+
+        # Skip the default deck if it's causing issues
+        if deck_name == "Default" or deck.get("id") == 1:
+            continue
+
+        # Check if this deck has a new cards limit override
+        if "new" in deck and "perDay" in deck["new"]:
+            current_deck_limit = deck["new"]["perDay"]
+
+            if current_deck_limit != limit:
+                if not dry_run:
+                    deck["new"]["perDay"] = limit
+                    mw.col.decks.save(deck)
+
+                changes.append(
+                    f"Deck '{deck_name}': {current_deck_limit} → {limit}"
+                )
 
     if not dry_run and changes:
         mw.col.decks.flush()
@@ -112,24 +149,89 @@ def set_new_cards_limit(limit: int, dry_run: bool = False) -> List[str]:
     return changes
 
 
+def bury_new_cards_in_queue() -> int:
+    """
+    Bury all new cards that are currently in today's queue.
+    This ensures that cards already scheduled for today won't appear.
+
+    Returns:
+        int: Number of cards buried
+    """
+    if not mw or not mw.col:
+        return 0
+
+    # Find all new cards (queue type 0 = new)
+    new_card_ids = mw.col.find_cards("is:new -is:suspended")
+
+    if not new_card_ids:
+        return 0
+
+    # Bury these cards for today (they'll come back tomorrow if unburied)
+    mw.col.sched.bury_cards(new_card_ids, manual=False)
+
+    log_action(
+        f"Buried {len(new_card_ids)} new cards",
+        {"count": len(new_card_ids)}
+    )
+
+    return len(new_card_ids)
+
+
 def apply_weekend_block() -> None:
     """
-    Apply weekend blocking: set new cards per day to 0.
+    Apply weekend blocking: set new cards per day to 0 and bury cards already in queue.
     """
+    # First, bury any new cards already in today's queue
+    buried_count = bury_new_cards_in_queue()
+
+    # Then set the limit to 0 to prevent more cards from appearing
     changes = set_new_cards_limit(0)
 
-    if changes:
+    if changes or buried_count > 0:
         message = f"🚫 Fim de semana: Novos cards bloqueados\n\n"
         message += f"Hoje: {get_day_name()}\n\n"
-        message += f"Alterações:\n" + "\n".join(changes)
+
+        if buried_count > 0:
+            message += f"Cards enterrados: {buried_count}\n"
+
+        if changes:
+            message += f"Alterações:\n" + "\n".join(changes)
+
         show_tooltip(message, duration=5000)
     else:
         show_tooltip(f"✓ Novos cards já estão bloqueados ({get_day_name()})")
 
 
+def unbury_new_cards() -> int:
+    """
+    Unbury all new cards that were buried by the addon.
+
+    Returns:
+        int: Number of cards unburied
+    """
+    if not mw or not mw.col:
+        return 0
+
+    # Find all buried new cards
+    buried_new_cards = mw.col.find_cards("is:new is:buried")
+
+    if not buried_new_cards:
+        return 0
+
+    # Unbury these cards
+    mw.col.sched.unbury_cards(buried_new_cards)
+
+    log_action(
+        f"Unburied {len(buried_new_cards)} new cards",
+        {"count": len(buried_new_cards)}
+    )
+
+    return len(buried_new_cards)
+
+
 def restore_weekday_limits() -> None:
     """
-    Restore original new cards per day limits for weekdays.
+    Restore original new cards per day limits for weekdays and unbury cards.
     """
     config = get_addon_config()
     original_limits = config.get("original_limits", {})
@@ -141,32 +243,64 @@ def restore_weekday_limits() -> None:
     if not mw or not mw.col:
         return
 
+    # First, unbury any cards that were buried
+    unburied_count = unbury_new_cards()
+
     changes = []
+
+    # Restore deck config limits
     all_config = mw.col.decks.all_config()
 
     for deck_config in all_config:
-        config_id = str(deck_config["id"])
+        config_id = deck_config["id"]
+        config_key = f"config_{config_id}"
         config_name = deck_config.get("name", f"Config {config_id}")
 
-        if config_id in original_limits:
-            original_limit = original_limits[config_id]
+        if config_key in original_limits:
+            original_limit = original_limits[config_key]
             current_limit = deck_config.get("new", {}).get("perDay", 0)
 
             if current_limit != original_limit:
                 deck_config["new"]["perDay"] = original_limit
                 mw.col.decks.update_config(deck_config)
-                changes.append(f"{config_name}: {current_limit} → {original_limit}")
+                changes.append(f"Config '{config_name}': {current_limit} → {original_limit}")
 
-    if changes:
+    # Restore individual deck limits
+    all_decks = mw.col.decks.all()
+
+    for deck in all_decks:
+        deck_id = deck.get("id")
+        deck_key = f"deck_{deck_id}"
+        deck_name = deck.get("name", "Unknown")
+
+        if deck_key in original_limits:
+            original_limit = original_limits[deck_key]
+
+            # Only restore if the deck has the override
+            if "new" in deck and "perDay" in deck["new"]:
+                current_limit = deck["new"]["perDay"]
+
+                if current_limit != original_limit:
+                    deck["new"]["perDay"] = original_limit
+                    mw.col.decks.save(deck)
+                    changes.append(f"Deck '{deck_name}': {current_limit} → {original_limit}")
+
+    if changes or unburied_count > 0:
         mw.col.decks.flush()
         log_action(
             "Restored weekday limits",
-            {"changes": changes}
+            {"changes": changes, "unburied": unburied_count}
         )
 
         message = f"✓ Dia de semana: Novos cards liberados\n\n"
         message += f"Hoje: {get_day_name()}\n\n"
-        message += f"Restaurado:\n" + "\n".join(changes)
+
+        if unburied_count > 0:
+            message += f"Cards desenterrados: {unburied_count}\n"
+
+        if changes:
+            message += f"Restaurado:\n" + "\n".join(changes)
+
         show_tooltip(message, duration=5000)
     else:
         show_tooltip(f"✓ Configurações já estão corretas ({get_day_name()})")
